@@ -272,63 +272,52 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         return null;
     }
 
+    /**
+     * Calculate the static evaluation of the board
+     * @param turnSelector true for white
+     * @return rating for the player specified
+     */
     private int MinMax_CalcVal(boolean turnSelector) {
-
-        int i = 0;
-        int j = 0;
         int valMinMax = 0;
-
-        int pUnderThreat = 0;
-        int kingUnderThreat = 0;
-
-        int majorPieceCount = 0;
-        int minorPieceCount = 0;
-        boolean kingPresent = false;
-
-        LinkedList<Piece> pieces = null;
-        if (turnSelector == false) { // Black's Turn
-            pieces = Bpieces;
-        }
-        else { // White's Turn
-            pieces = Wpieces;
-        }
-
-        int pCount = pieces.size();
-
-        for (i = 0; i < pCount; i++) {
-            Piece piece = pieces.get(i);
-            if (piece.getClass().getName().equals("Bishop")) { minorPieceCount++; }
-            if (piece.getClass().getName().equals("Knight")) { minorPieceCount++; }
-            if (piece.getClass().getName().equals("Queen")) { majorPieceCount++; }
-            if (piece.getClass().getName().equals("Rook")) { majorPieceCount++; }
-            if (piece.getClass().getName().equals("King")) { majorPieceCount++; kingPresent = true; }
-
-            List<Square> possibleMoves = piece.getLegalMoves(this);
-            for (j = 0; j < possibleMoves.size(); j++) {
-                Square sq = possibleMoves.get(j);
-                Piece occPiece = sq.getOccupyingPiece();
-                if (occPiece != null)
-                {
-                    if ((turnSelector) && (occPiece.getColor() == 0)) { // White Piece attacking Black Piece
-                        pUnderThreat++;
-                        if (occPiece.getClass().getName().equals("King")){
-                            kingUnderThreat++;
-                        }
-                    }
-                    if ((!turnSelector) && (occPiece.getColor() == 1)) { // Black Piece attacking White Piece
-                        pUnderThreat++;
-                        if (occPiece.getClass().getName().equals("King")){
-                            kingUnderThreat++;
-                        }
-                    }
+        Iterator it = Wpieces.iterator();
+        while (it.hasNext()) {
+            Piece piece = (Piece) it.next();
+            valMinMax += pieceValue(piece.getClass().getName());
+            Iterator it2 = piece.getLegalMoves(this).iterator();
+            while (it2.hasNext()) {
+                Piece occPiece = ((Square) it2.next()).getOccupyingPiece();
+                if (occPiece != null && occPiece.getColor() == 0) {
+                    valMinMax += 1;
                 }
             }
         }
-
-        valMinMax = (pCount * 4) + (majorPieceCount * 8) + (minorPieceCount * 6) +
-                (pUnderThreat * 9) + (kingUnderThreat * 10) + (kingPresent ? 10 : -100);
-
+        it = Bpieces.iterator();
+        while (it.hasNext()) {
+            Piece piece = (Piece) it.next();
+            valMinMax -= pieceValue(piece.getClass().getName());
+            Iterator it2 = piece.getLegalMoves(this).iterator();
+            while (it2.hasNext()) {
+                Piece occPiece = ((Square) it2.next()).getOccupyingPiece();
+                if (occPiece != null && occPiece.getColor() == 1) {
+                    valMinMax -= 1;
+                }
+            }
+        }
         return valMinMax;
+    }
+
+    private int pieceValue(String s){
+        switch(s){
+            case "Bishop", "Knight":
+                return 3;
+            case "Rook":
+                return 5;
+            case "Queen":
+                return 9;
+            case "King":
+                return 100;
+        }
+        return 1;
     }
 
     private Pair<Integer, Pair<Piece, Square>> MinMax_SelectPiece(boolean turnSelector, int depthLevel, String prevPos, Stack<String> futureMoves) {
