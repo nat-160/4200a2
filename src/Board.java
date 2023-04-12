@@ -11,24 +11,24 @@ import javax.swing.*;
 
 //@SuppressWarnings("serial")
 public class Board extends JPanel implements MouseListener, MouseMotionListener {
-	// Resource location constants for piece images
+    // Resource location constants for piece images
     private static final String RESOURCES_WBISHOP_PNG = "resources/wbishop.png";
-	private static final String RESOURCES_BBISHOP_PNG = "resources/bbishop.png";
-	private static final String RESOURCES_WKNIGHT_PNG = "resources/wknight.png";
-	private static final String RESOURCES_BKNIGHT_PNG = "resources/bknight.png";
-	private static final String RESOURCES_WROOK_PNG = "resources/wrook.png";
-	private static final String RESOURCES_BROOK_PNG = "resources/brook.png";
-	private static final String RESOURCES_WKING_PNG = "resources/wking.png";
-	private static final String RESOURCES_BKING_PNG = "resources/bking.png";
-	private static final String RESOURCES_BQUEEN_PNG = "resources/bqueen.png";
-	private static final String RESOURCES_WQUEEN_PNG = "resources/wqueen.png";
-	private static final String RESOURCES_WPAWN_PNG = "resources/wpawn.png";
-	private static final String RESOURCES_BPAWN_PNG = "resources/bpawn.png";
+    private static final String RESOURCES_BBISHOP_PNG = "resources/bbishop.png";
+    private static final String RESOURCES_WKNIGHT_PNG = "resources/wknight.png";
+    private static final String RESOURCES_BKNIGHT_PNG = "resources/bknight.png";
+    private static final String RESOURCES_WROOK_PNG = "resources/wrook.png";
+    private static final String RESOURCES_BROOK_PNG = "resources/brook.png";
+    private static final String RESOURCES_WKING_PNG = "resources/wking.png";
+    private static final String RESOURCES_BKING_PNG = "resources/bking.png";
+    private static final String RESOURCES_BQUEEN_PNG = "resources/bqueen.png";
+    private static final String RESOURCES_WQUEEN_PNG = "resources/wqueen.png";
+    private static final String RESOURCES_WPAWN_PNG = "resources/wpawn.png";
+    private static final String RESOURCES_BPAWN_PNG = "resources/bpawn.png";
 
     private static final int DEPTH_LEVEL = 3;
 
-	// Logical and graphical representations of board
-	private Square[][] board;
+    // Logical and graphical representations of board
+    private Square[][] board;
     private GameWindow g;
     
     // List of pieces and whether they are movable
@@ -99,7 +99,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
     }
 
     private void initializePieces() {
-    	
+
         for (int x = 0; x < 8; x++) {
             board[1][x].put(new Pawn(0, board[1][x], RESOURCES_BPAWN_PNG));
             board[6][x].put(new Pawn(1, board[6][x], RESOURCES_WPAWN_PNG));
@@ -274,38 +274,53 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 
     /**
      * Calculate the static evaluation of the board
-     * @return rating for the player specified
+     * @param turnSelector True for White
+     * @return rating for board based on turn
      */
-    private int MinMax_CalcVal() {
+    private int MinMax_CalcVal(boolean turnSelector) {
+        if (cmd.blackCheckMated()) return Integer.MAX_VALUE;
+        if (cmd.whiteCheckMated()) return Integer.MIN_VALUE;
         int valMinMax = 0;
-        Iterator<Piece> it = Wpieces.iterator();
-        while (it.hasNext()) {
-            Piece piece = it.next();
+        for (Piece piece : Wpieces) {
             int pieceVal = pieceValue(piece);
-            valMinMax += pieceVal;
-            Iterator<Square> it2 = piece.getLegalMoves(this).iterator();
-            while (it2.hasNext()) {
-                Piece occPiece = it2.next().getOccupyingPiece();
-                if (occPiece != null && occPiece.getColor() == 0 && pieceVal <= pieceValue(occPiece))
-                        valMinMax += 1;
+            valMinMax += 100 * pieceVal;
+            /*
+            for (Square square : piece.getLegalMoves(this)) {
+                Piece occPiece = square.getOccupyingPiece();
+                if (occPiece != null) {
+                    int occVal = pieceValue(occPiece);
+                    if (occPiece.getColor() == 0 && pieceVal <= occVal)
+                        valMinMax += pieceVal - occVal;
+                }
             }
+
+             */
         }
-        it = Bpieces.iterator();
-        while (it.hasNext()) {
-            Piece piece = it.next();
+        for (Piece piece : Bpieces) {
             int pieceVal = pieceValue(piece);
-            valMinMax -= pieceVal;
-            Iterator<Square> it2 = piece.getLegalMoves(this).iterator();
-            while (it2.hasNext()) {
-                Piece occPiece = it2.next().getOccupyingPiece();
-                if (occPiece != null && occPiece.getColor() == 1 && pieceVal <= pieceValue(occPiece))
-                    valMinMax -= 1;
+            valMinMax -= 100 * pieceVal;
+            /*
+            for (Square square : piece.getLegalMoves(this)) {
+                Piece occPiece = square.getOccupyingPiece();
+                if (occPiece != null) {
+                    int occVal = pieceValue(occPiece);
+                    if (occPiece.getColor() == 1 && pieceVal <= occVal)
+                        valMinMax -= pieceVal - occVal;
+                }
             }
+
+             */
         }
-        return valMinMax;
+        // generate some noise, so that no 2 ratings are equal
+        return valMinMax + (new Random()).nextInt(100);
     }
 
-    private int pieceValue(Piece p){
+    /**
+     * Get point value of a particular piece
+     * @param p Piece
+     * @return Point rating of piece
+     */
+    private int pieceValue(Piece p) {
         return switch (p.getClass().getName()) {
             case "Bishop", "Knight" -> 3;
             case "Rook" -> 5;
@@ -323,44 +338,99 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
      * Reset all Pawns First Move Status
      */
     private void resetPawnStatus(){
-        Iterator<Piece> it = Wpieces.iterator();
-        while (it.hasNext()) {
-            Piece piece = it.next();
-            if (piece.getClass().getName().equals("Pawn")) {
-                if (piece.getPosition().getYNum() == 6) {
+        for (Piece piece: Wpieces)
+            if (piece instanceof Pawn)
+                if (piece.getPosition().getYNum() == 6)
                     ((Pawn) piece).setMoved(false);
-                }
-            }
-        }
-        it = Bpieces.iterator();
-        while (it.hasNext()) {
-            Piece piece = it.next();
-            if (piece.getClass().getName().equals("Pawn")) {
-                if (piece.getPosition().getYNum() == 1) {
-                    ((Pawn) piece).setMoved(false); // Reset Pawn's First Move Status
-                }
-            }
-        }
+        for (Piece piece : Bpieces)
+            if (piece instanceof Pawn)
+                if (piece.getPosition().getYNum() == 1)
+                    ((Pawn) piece).setMoved(false);
     }
 
+    private HashSet<Pair<Piece, Square>> moves(Board position, boolean maximizingPlayer){
+        HashSet<Pair<Piece, Square>> children = new HashSet<>();
+        List<Piece> pieces = maximizingPlayer ? position.Wpieces : position.Bpieces;
+        for (Piece piece : pieces) {
+            for (Square square : piece.getLegalMoves(position)) {
+                if (square.getOccupyingPiece() == null
+                        || piece.getColor() != square.getOccupyingPiece().getColor()
+                ) {
+                    children.add(new Pair<>(piece, square));
+                }
+            }
+        }
+        return children;
+    }
+    private Pair<Integer, Pair<Piece, Square>> MinMax_SelectPiece2(Board position, int depth, int alpha, int beta, boolean maximizingPlayer) {
+        if (depth == 0 || position.cmd.whiteCheckMated() || position.cmd.blackCheckMated())
+            return new Pair<>(position.MinMax_CalcVal(maximizingPlayer), null);
+        int bestEval = maximizingPlayer ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        Pair<Piece, Square> bestMove = null;
+        if (maximizingPlayer) {
+            for (Pair<Piece, Square> move : moves(position, maximizingPlayer)) {
+                Board child = position.copyBoard();
+                boolean success = child.takeTurnEx(move.getKey(), move.getValue(), maximizingPlayer,"",0);
+                if (!success) continue;
+                int eval = MinMax_SelectPiece2(child, depth - 1, alpha, beta, !maximizingPlayer).getKey();
+                if (eval > bestEval) {
+                    bestEval = eval;
+                    bestMove = move;
+                }
+                alpha = Math.max(alpha, eval);
+                if (beta <= alpha)
+                    break;
+            }
+        } else {
+            for (Pair<Piece, Square> move : moves(position, maximizingPlayer)) {
+                Board child = position.copyBoard();
+                boolean success = child.takeTurnEx(move.getKey(), move.getValue(), maximizingPlayer, "", 0);
+                if (!success) continue;
+                int eval = MinMax_SelectPiece2(child, depth - 1, alpha, beta, !maximizingPlayer).getKey();
+                if (eval < bestEval) {
+                    bestEval = eval;
+                    bestMove = move;
+                }
+                beta = Math.min(beta, eval);
+                if (beta <= alpha)
+                    break;
+            }
+        }
+        return new Pair<>(bestEval, bestMove);
+    }
     private Pair<Integer, Pair<Piece, Square>> MinMax_SelectPiece(boolean turnSelector, int depthLevel, String prevPos, Stack<String> futureMoves, int alpha, int beta) {
+        // Get the Game Tree Depth from UI
+        int gameTreeDepth = getUIDepth();
+        // Get static eval if limit reached
+        if (depthLevel > gameTreeDepth) return new Pair<>(MinMax_CalcVal(turnSelector), null);
         // get list of pieces
         LinkedList<Piece> pieces = turnSelector ? Wpieces : Bpieces;
         // initiate new console output
-        Stack<String> bestFutureMoves = new Stack<String>();
-
+        Stack<String> bestFutureMoves = new Stack<>();
+        // initialize eval depending on turn
         int oppMinMaxVal = turnSelector ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        Piece oppPiece = null;
         Square oppSq = null;
-        Piece oppPiece = pieces.get(0);
-        for (int i = 0; i < pieces.size(); i++) {
-            Piece pieceTemp = pieces.get(i);
+        for (Piece pieceTemp : pieces) {
             if (pieceTemp != null) {
                 Stack<String> tempFutureMoves = new Stack<>();
-                Pair<Integer, Square> r =
-                        MinMax_SelectSquare(pieceTemp, turnSelector, depthLevel + 1,
+                // Get best square for piece
+                Pair<Integer, Pair<Integer, Pair<Integer, Square>>> r =
+                        MinMax_SelectSquare(pieceTemp, turnSelector, depthLevel,
                                 prevPos + pieceTemp.getPositionName() + "\r\n", tempFutureMoves, alpha, beta);
-                int valMinMax = r.getKey();
-                Square sqTempNext = r.getValue();
+                // Update alpha & beta, because we are on same level
+                int valMinMax = r.getValue().getValue().getKey();
+                if (turnSelector) {
+                    alpha = Math.max(r.getKey(), valMinMax);
+                    beta = r.getValue().getKey();
+                } else {
+                    alpha = r.getKey();
+                    beta = Math.min(r.getValue().getKey(), valMinMax);
+                }
+                // Break if appropriate
+                if (beta <= alpha) break;
+                // If the move is an improvement, store it
+                Square sqTempNext = r.getValue().getValue().getValue();
                 if (((turnSelector) && ((oppSq == null) || (valMinMax > oppMinMaxVal))) || ((!turnSelector) && ((oppSq == null) || (valMinMax < oppMinMaxVal)))) {
                     oppSq = sqTempNext;
                     oppPiece = pieceTemp;
@@ -368,25 +438,28 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                     bestFutureMoves.removeAllElements();
                     bestFutureMoves.addAll(tempFutureMoves);
                 }
-                resetPawnStatus();
-                /*
-                if (turnSelector) {
-                    alpha = Math.max(alpha, valMinMax);
-                } else {
-                    beta = Math.min(beta, valMinMax);
-                }
-                if (beta < alpha) break;
-                 */
+                if (depthLevel == 0) resetPawnStatus();
             }
         }
-
+        // Select a default square, if somehow none was found
+        if(oppSq == null) {
+            for (Piece p : pieces) {
+                if (p.getLegalMoves(this).size() != 0) {
+                    oppPiece = p;
+                    oppSq = p.getLegalMoves(this).get(0);
+                }
+            }
+        }
+        // Set console output
         String oppSqPosName = (oppSq == null) ? "---" : oppSq.getPositionName();
         futureMoves.addAll(bestFutureMoves);
+        assert oppPiece != null;
         futureMoves.push(oppPiece.getPositionName() +
                 " to " + oppSqPosName +
                 " Level: " + Integer.toString(depthLevel) +
                 " Val: " + Integer.toString(oppMinMaxVal));
 
+        // Return rating, best piece and best move
         return (new Pair<>(oppMinMaxVal, new Pair<>(oppPiece, oppSq)));
     }
 
@@ -396,20 +469,14 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         return (gameTreeDepth > 0) ? gameTreeDepth : DEPTH_LEVEL;
     }
 
-    private Pair<Integer, Square> MinMax_SelectSquare(Piece chessPiece, boolean turnSelector, int depthLevel, String prevPos, Stack<String> futureMoves) {
+    private Pair<Integer, Pair<Integer, Pair<Integer, Square>>> MinMax_SelectSquare(Piece chessPiece, boolean turnSelector, int depthLevel, String prevPos, Stack<String> futureMoves) {
         return MinMax_SelectSquare(chessPiece, turnSelector, depthLevel, prevPos, futureMoves, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
-    private Pair<Integer, Square> MinMax_SelectSquare(Piece chessPiece, boolean turnSelector, int depthLevel, String prevPos, Stack<String> futureMoves, int alpha, int beta) {
-        // Get the Game Tree Depth from UI
-        int gameTreeDepth = getUIDepth();
-
-        // Get static eval if limit reached
-        if (depthLevel > gameTreeDepth) return new Pair<>(MinMax_CalcVal(), null);
-
+    private Pair<Integer, Pair<Integer, Pair<Integer, Square>>> MinMax_SelectSquare(Piece chessPiece, boolean turnSelector, int depthLevel, String prevPos, Stack<String> futureMoves, int alpha, int beta) {
         // Set best found square and evaluation depending on player
         Square nextMoveSq = null;
-        int nextMoveMinMax = turnSelector ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        int nextMoveMinMax = turnSelector ? Integer.MAX_VALUE : Integer.MIN_VALUE;
 
         // Instantiate console output
         Stack<String> bestFutureMoves = new Stack<>();
@@ -418,9 +485,8 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         List<Square> possibleMoves = chessPiece.getLegalMoves(this);
 
         // Find the next square to occupy
-        for (int j = 0; j < possibleMoves.size(); j++) {
-            Square sq = possibleMoves.get(j);
-            // If the square is empty or occupied by an opposing piece (white=1)
+        for (Square sq : possibleMoves) {
+            // Double check if the square is empty or occupied by an opposing piece (white=1)
             if ((sq.getOccupyingPiece() == null) ||
                     (turnSelector && (sq.getOccupyingPiece().getColor() == 0)) ||
                     (!turnSelector && (sq.getOccupyingPiece().getColor() == 1))
@@ -433,13 +499,13 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 Piece capturedPiece = sq.isOccupied() ? sq.getOccupyingPiece() : null;
                 Square currSq = chessPiece.getPosition();
 
-                boolean success = this.takeTurnEx(chessPiece, sq, turnSelector, prevPos, depthLevel);
                 // if move is invalid, skip (to evade check)
+                boolean success = this.takeTurnEx(chessPiece, sq, turnSelector, prevPos, depthLevel);
                 if (!success) continue;
 
                 // Get the best opponent move after current move
                 Pair<Integer, Pair<Piece, Square>> r = MinMax_SelectPiece(
-                        !turnSelector, depthLevel, prevPos, tempFutureMoves, alpha, beta);
+                        !turnSelector, depthLevel + 1, prevPos, tempFutureMoves, alpha, beta);
                 int valMinMax = r.getKey();
 
                 // Undo the move
@@ -456,7 +522,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 cmd.update();
 
                 // If a good move has been found, store it
-                if ((turnSelector && valMinMax > nextMoveMinMax) || (!turnSelector && valMinMax < nextMoveMinMax)) {
+                if ((turnSelector && valMinMax < nextMoveMinMax)
+                        || (!turnSelector && valMinMax > nextMoveMinMax)
+                        || (valMinMax == Integer.MAX_VALUE
+                        || valMinMax == Integer.MIN_VALUE)
+                ) {
                     nextMoveSq = sq;
                     nextMoveMinMax = valMinMax;
                     bestFutureMoves.removeAllElements();
@@ -468,34 +538,28 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 } else {
                     beta = Math.min(beta, nextMoveMinMax);
                 }
-                if (beta <= alpha) {
-                    break; // cutoff
-                }
+                // Cutoff
+                if (beta <= alpha) break;
             }
         }
 
-        if(nextMoveSq != null){
-            futureMoves.addAll(bestFutureMoves);
-            return new Pair<>(nextMoveMinMax, nextMoveSq);
-        }
-        return new Pair<>(0, null);
+        futureMoves.addAll(bestFutureMoves);
+        return new Pair<>(alpha, new Pair<>(beta, new Pair<>(nextMoveMinMax, nextMoveSq)));
     }
 
     private boolean EvadeCheck() {
-
         Stack<String> tempFutureMoves = new Stack<String>();
         // Try to find best square to move the King
-        Pair<Integer, Square> r = MinMax_SelectSquare(Bk, false, 0, Bk.getPositionName() + "\r\n", tempFutureMoves);
-        int valMinMax = r.getKey();
-        Square sq = r.getValue();
+        Pair<Integer, Pair<Integer, Pair<Integer, Square>>> r = MinMax_SelectSquare(Bk, false, 0, Bk.getPositionName() + "\r\n", tempFutureMoves);
+        int valMinMax = r.getValue().getValue().getKey();
+        Square sq = r.getValue().getValue().getValue();
 
         if (!takeTurnEx(Bk, sq, false, "", 0)) {
             List<Square> kingsMoves = Bk.getLegalMoves(this);
-            Iterator<Square> iterator = kingsMoves.iterator();
 
             // If best square is not available pick any available square
-            while (iterator.hasNext()) {
-                sq = iterator.next();
+            for (Square kingsMove : kingsMoves) {
+                sq = kingsMove;
                 if (!cmd.testMove(Bk, sq)) continue;
                 if (cmd.wMoves.get(sq.hashCode()).isEmpty()) {
                     takeTurnEx(Bk, sq, false, "", 0);
@@ -535,7 +599,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                     success = true;
 
                     if (g.watchMoves.isSelected()) {
-                        int valMinMax = MinMax_CalcVal();
+                        int valMinMax = MinMax_CalcVal(turnSelector);
                         newText = prevPos + piece.getPositionName();
                         newText = newText + " Level: " + Integer.toString(depthLevel);
                         newText = newText + " Val: " + Integer.toString(valMinMax) + "\r\n";
