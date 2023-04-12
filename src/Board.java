@@ -204,8 +204,6 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         int j = 0;
 
         // Reposition the pieces based on Board being copied
-        King wk = null;
-        King bk = null;
         newBoard.Bpieces = new LinkedList<Piece>();
         newBoard.Wpieces = new LinkedList<Piece>();
         for (i = 0; i < 8; i++) {
@@ -218,13 +216,13 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                     if (piece.getColor() == 0) {
                         newBoard.Bpieces.add(newPiece);
                         if (newPiece.getClass().getName().equals("King")) {
-                            bk = (King) newPiece;
+                            newBoard.Bk = (King) newPiece;
                         }
                     }
                     else {
                         newBoard.Wpieces.add(newPiece);
                         if (newPiece.getClass().getName().equals("King")) {
-                            wk = (King) newPiece;
+                            newBoard.Wk = (King) newPiece;
                         }
                     }
                     if (piece.equals(currPiece)) {
@@ -348,32 +346,333 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                     ((Pawn) piece).setMoved(false);
     }
 
-    private HashSet<Pair<Piece, Square>> moves(Board position, boolean maximizingPlayer){
-        HashSet<Pair<Piece, Square>> children = new HashSet<>();
-        List<Piece> pieces = maximizingPlayer ? position.Wpieces : position.Bpieces;
-        for (Piece piece : pieces) {
-            for (Square square : piece.getLegalMoves(position)) {
-                if (square.getOccupyingPiece() == null
-                        || piece.getColor() != square.getOccupyingPiece().getColor()
-                ) {
-                    children.add(new Pair<>(piece, square));
+    private class EvalBoard{
+        int[][] board;
+        EvalBoard(Board old){
+            board = new int[8][8];
+            Square[][] oldGrid = old.board;
+            for(int x=0;x<8;x++){
+                for(int y=0;y<8;y++){
+                    Piece p = oldGrid[x][y].getOccupyingPiece();
+                    if(p != null) {
+                        board[x][y] = getValue(p);
+                        if (p.getColor()==0) board[x][y] *= -1;
+                    }
+                    else board[x][y] = 0;
                 }
             }
         }
-        return children;
+        EvalBoard(EvalBoard old){
+            board = new int[8][8];
+            for(int x=0;x<8;x++)
+                System.arraycopy(old.board[x], 0, board[x], 0, 8);
+        }
+        int getValue(Piece p){
+            return switch(p.getClass().getName()){
+                case "Pawn" -> 1;
+                case "Knight" -> 3;
+                case "Bishop" -> 4;
+                case "Rook" -> 6;
+                case "Queen" -> 9;
+                case "King" -> 100;
+                default -> 0;
+            };
+        }
+        boolean gameOver(boolean maximizingPlayer){
+            return moves(maximizingPlayer).size() == 0;
+        }
+        int evaluation(){
+            if (inCheck(true)) return Integer.MIN_VALUE;
+            if (inCheck(false)) return Integer.MAX_VALUE;
+            int sum = 0;
+            for(int[] row : board)
+                for(int sq : row)
+                    sum += sq;
+            return sum;
+        }
+        EvalBoard copyBoard(){
+            return new EvalBoard(this);
+        }
+        boolean turn(Coord piece, Coord square, boolean maximizingPlayer){
+            board[square.x][square.y] = board[piece.x][piece.y];
+            board[piece.x][piece.y] = 0;
+            return true;
+        }
+        boolean inCheck(boolean maximizingPlayer){
+            Coord kingPos = new Coord(-1,-1);
+            for (int x = 0; x < 8; x++) {
+                for (int y = 0; y < 8; y++) {
+                    if (board[x][y] == (maximizingPlayer ? 100 : -100)) {
+                        kingPos.x = x;
+                        kingPos.y = y;
+                    }
+                }
+            }
+            if (kingPos.x==-1 || kingPos.y==-1) return true;
+            // check right + down
+            int x = kingPos.x+1, y = kingPos.y+1;
+            while (x<8 && y<8) {
+                switch (board[x][y]) {
+                    case 4,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -1,-4,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: x = 8;
+                }
+                x++; y++;
+            }
+            // check right + up
+            x = kingPos.x+1; y = kingPos.y-1;
+            while (x<8 && y>=0) {
+                switch (board[x][y]) {
+                    case 1,4,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -4,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: x = 8;
+                }
+                x++; y--;
+            }
+            // check left + down
+            x = kingPos.x-1; y = kingPos.y+1;
+            while (x>=0 && y<8) {
+                switch (board[x][y]) {
+                    case 4,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -1,-4,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: x = -1;
+                }
+                x--; y++;
+            }
+            // check left + up
+            x = kingPos.x-1; y = kingPos.y-1;
+            while (x>=0 && y>=0) {
+                switch (board[x][y]) {
+                    case 1,4,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -4,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: x = -1;
+                }
+                x--; y--;
+            }
+            // check down
+            x = kingPos.x; y = kingPos.y+1;
+            while (y<8) {
+                switch (board[x][y]) {
+                    case 6,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -6,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: y = 8;
+                }
+                y++;
+            }
+            // check up
+            y = kingPos.y-1;
+            while (y>=0) {
+                switch (board[x][y]) {
+                    case 6,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -6,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: y = -1;
+                }
+                y--;
+            }
+            // check left
+            x = kingPos.x-1; y = kingPos.y;
+            while (x>=0) {
+                switch (board[x][y]) {
+                    case 6,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -6,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: x = -1;
+                }
+                x--;
+            }
+            // check right
+            x = kingPos.x+1;
+            while (x<8) {
+                switch (board[x][y]) {
+                    case 6,9,100:
+                        if (!maximizingPlayer) return true;
+                        break;
+                    case -6,-9,-100:
+                        if (maximizingPlayer) return true;
+                        break;
+                    case 0: break;
+                    default: x = 8;
+                }
+                x++;
+            }
+            // check horsey (there is probably easier way but its only 8 sqs so whatever)
+            int horse = (maximizingPlayer ? -3 : 3);
+            if (kingPos.x+1<8 && kingPos.y+2<8 && board[kingPos.x+1][kingPos.y+2]==horse) return true;
+            if (kingPos.x+2<8 && kingPos.y+1<8 && board[kingPos.x+2][kingPos.y+1]==horse) return true;
+            if (kingPos.x+2<8 && kingPos.y-1>=0 && board[kingPos.x+2][kingPos.y-1]==horse) return true;
+            if (kingPos.x+1<8 && kingPos.y-2>=0 && board[kingPos.x+1][kingPos.y-2]==horse) return true;
+            if (kingPos.x-1>=0 && kingPos.y-2>=0 && board[kingPos.x-1][kingPos.y-2]==horse) return true;
+            if (kingPos.x-2>=0 && kingPos.y-1>=0 && board[kingPos.x-2][kingPos.y-1]==horse) return true;
+            if (kingPos.x-2>=0 && kingPos.y+1<8 && board[kingPos.x-2][kingPos.y+1]==horse) return true;
+            return (kingPos.x-1>=0 && kingPos.y+2<8 && board[kingPos.x-1][kingPos.y+2]==horse);
+        }
+        boolean validMove(Coord piece, Coord square, boolean maximizingPlayer){
+            // same square
+            if(piece.x==square.x && piece.y==square.y) return false;
+            // out of bounds
+            if(square.x<0 || square.x>=8 || square.y<0 || square.y>=8) return false;
+            // pawn rules
+            if(Math.abs(board[piece.x][piece.y])==1) {
+                if (piece.x == square.x) {
+                    if (board[square.x][square.y] != 0) return false;
+                }
+                else if (maximizingPlayer) {
+                    if (board[square.x][square.y]>=0) return false;
+                }
+                else {
+                    if (board[square.x][square.y]<=0) return false;
+                }
+            }
+            // cannot move into check
+            EvalBoard test = copyBoard();
+            test.turn(piece, square, maximizingPlayer);
+            if (test.inCheck(maximizingPlayer))
+                return false;
+            // cannot attack team
+            return board[square.x][square.y]*board[piece.x][piece.y]<=0;
+        }
+        HashSet<Pair<Coord, Coord>> moves(boolean maximizingPlayer){
+            HashSet<Pair<Coord,Coord>> moves = new HashSet<>();
+            for(int x=0;x<8;x++){
+                for(int y=0;y<8;y++){
+                    Coord piece = new Coord(x,y);
+                    int value = board[x][y];
+                    if (!maximizingPlayer) value *= -1;
+                    if (value == 1){
+                        if (maximizingPlayer) {
+                            if (y == 6)
+                                if (validMove(piece, new Coord(x, 4), true))
+                                    moves.add(new Pair<>(piece, new Coord(x, 4)));
+                            else {
+                                if (validMove(piece, new Coord(x+1,y-1), true))
+                                    moves.add(new Pair<>(piece, new Coord(x+1,y-1)));
+                                if (validMove(piece, new Coord(x,y-1), true))
+                                    moves.add(new Pair<>(piece, new Coord(x,y-1)));
+                                if (validMove(piece, new Coord(x-1,y-1), true))
+                                    moves.add(new Pair<>(piece, new Coord(x-1,y-1)));
+                            }
+                        } else {
+                            if (y == 1)
+                                if (validMove(piece, new Coord(x, 3), false))
+                                    moves.add(new Pair<>(piece, new Coord(x, 3)));
+                            else {
+                                if (validMove(piece, new Coord(x+1,y+1), true))
+                                    moves.add(new Pair<>(piece, new Coord(x+1,y+1)));
+                                if (validMove(piece, new Coord(x,y+1), true))
+                                    moves.add(new Pair<>(piece, new Coord(x,y+1)));
+                                if (validMove(piece, new Coord(x-1,y+1), true))
+                                    moves.add(new Pair<>(piece, new Coord(x-1,y+1)));
+                            }
+                        }
+                    }
+                    if (value == 3)
+                        for(int i=-2;i<=2;i++)
+                            for(int j=-2;j<=2;j++)
+                                if(Math.abs(i)+Math.abs(j)==3)
+                                    if(validMove(piece, new Coord(x+i,y+j), maximizingPlayer))
+                                        moves.add(new Pair<>(piece, new Coord(x+i,y+j)));
+                    boolean dir1 = true, dir2 = true, dir3 = true, dir4 = true;
+                    if (value == 4 || value == 9)
+                        for(int i=1;i<=7;i++) {
+                            if (validMove(piece, new Coord(x + i, y + i), maximizingPlayer) && dir1)
+                                moves.add(new Pair<>(piece, new Coord(x + i, y + i)));
+                            else
+                                dir1 = false;
+                            if (validMove(piece, new Coord(x + i, y - i), maximizingPlayer) && dir2)
+                                moves.add(new Pair<>(piece, new Coord(x + i, y - i)));
+                            else
+                                dir2 = false;
+                            if (validMove(piece, new Coord(x - i, y - i), maximizingPlayer) && dir3)
+                                moves.add(new Pair<>(piece, new Coord(x - i, y - i)));
+                            else
+                                dir3 = false;
+                            if (validMove(piece, new Coord(x - i, y + i), maximizingPlayer) && dir4)
+                                moves.add(new Pair<>(piece, new Coord(x - i, y + i)));
+                            else
+                                dir4 = false;
+                        }
+                    dir1 = true; dir2 = true; dir3 = true; dir4 = true;
+                    if (value == 6 || value == 9)
+                        for(int i=1;i<=7;i++) {
+                            if (validMove(piece, new Coord(x + i, y), maximizingPlayer) && dir1)
+                                moves.add(new Pair<>(piece, new Coord(x + i, y)));
+                            else
+                                dir1 = false;
+                            if (validMove(piece, new Coord(x - i, y), maximizingPlayer) && dir2)
+                                moves.add(new Pair<>(piece, new Coord(x - i, y)));
+                            else
+                                dir2 = false;
+                            if (validMove(piece, new Coord(x, y + i), maximizingPlayer) && dir3)
+                                moves.add(new Pair<>(piece, new Coord(x, y + i)));
+                            else
+                                dir3 = false;
+                            if (validMove(piece, new Coord(x, y - i), maximizingPlayer) && dir4)
+                                moves.add(new Pair<>(piece, new Coord(x, y - i)));
+                            else
+                                dir4 = false;
+                        }
+                    if (value == 100)
+                        for(int i=-1;i<=1;i++)
+                            for(int j=-1;j<=1;j++)
+                                if(validMove(piece, new Coord(x+i,y+j), maximizingPlayer))
+                                    moves.add(new Pair<>(piece, new Coord(x+i,y+j)));
+                }
+            }
+            return moves;
+        }
     }
-    private Pair<Integer, Pair<Piece, Square>> MinMax_SelectPiece2(Board position, int depth, int alpha, int beta, boolean maximizingPlayer) {
-        if (depth == 0 || position.cmd.whiteCheckMated() || position.cmd.blackCheckMated())
-            return new Pair<>(position.MinMax_CalcVal(maximizingPlayer), null);
+    class Coord {
+        int x, y;
+        Coord (int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+    private Pair<Integer, Pair<Coord, Coord>> MinMax_SelectMove(EvalBoard position, int depth, int alpha, int beta, boolean maximizingPlayer) {
+        if (depth == 0 || position.gameOver(maximizingPlayer))
+            return new Pair<>(position.evaluation(), new Pair<>(new Coord(10,10), new Coord(10,10)));
         int bestEval = maximizingPlayer ? Integer.MIN_VALUE : Integer.MAX_VALUE;
-        Pair<Piece, Square> bestMove = null;
+        Pair<Coord, Coord> bestMove = null;
         if (maximizingPlayer) {
-            for (Pair<Piece, Square> move : moves(position, maximizingPlayer)) {
-                Board child = position.copyBoard();
-                boolean success = child.takeTurnEx(move.getKey(), move.getValue(), maximizingPlayer,"",0);
-                if (!success) continue;
-                int eval = MinMax_SelectPiece2(child, depth - 1, alpha, beta, !maximizingPlayer).getKey();
-                if (eval > bestEval) {
+            for (Pair<Coord, Coord> move : position.moves(true)) {
+                EvalBoard child = position.copyBoard();
+                child.turn(move.getKey(), move.getValue(), true);
+                int eval = MinMax_SelectMove(child, depth - 1, alpha, beta, false).getKey();
+                if (eval >= bestEval) {
                     bestEval = eval;
                     bestMove = move;
                 }
@@ -382,12 +681,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                     break;
             }
         } else {
-            for (Pair<Piece, Square> move : moves(position, maximizingPlayer)) {
-                Board child = position.copyBoard();
-                boolean success = child.takeTurnEx(move.getKey(), move.getValue(), maximizingPlayer, "", 0);
-                if (!success) continue;
-                int eval = MinMax_SelectPiece2(child, depth - 1, alpha, beta, !maximizingPlayer).getKey();
-                if (eval < bestEval) {
+            for (Pair<Coord, Coord> move : position.moves(false)) {
+                EvalBoard child = position.copyBoard();
+                child.turn(move.getKey(), move.getValue(), false);
+                int eval = MinMax_SelectMove(child, depth - 1, alpha, beta, true).getKey();
+                if (eval <= bestEval) {
                     bestEval = eval;
                     bestMove = move;
                 }
@@ -396,8 +694,13 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                     break;
             }
         }
+        // This shouldn't happen!
+        if(bestMove == null) {
+            bestMove = new Pair<>(new Coord(-1, -1), new Coord(-1, -1));
+        }
         return new Pair<>(bestEval, bestMove);
     }
+
     private Pair<Integer, Pair<Piece, Square>> MinMax_SelectPiece(boolean turnSelector, int depthLevel, String prevPos, Stack<String> futureMoves, int alpha, int beta) {
         // Get the Game Tree Depth from UI
         int gameTreeDepth = getUIDepth();
@@ -550,9 +853,9 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
     private boolean EvadeCheck() {
         Stack<String> tempFutureMoves = new Stack<String>();
         // Try to find best square to move the King
-        Pair<Integer, Pair<Integer, Pair<Integer, Square>>> r = MinMax_SelectSquare(Bk, false, 0, Bk.getPositionName() + "\r\n", tempFutureMoves);
-        int valMinMax = r.getValue().getValue().getKey();
-        Square sq = r.getValue().getValue().getValue();
+        Pair<Integer, Pair<Coord, Coord>> r = MinMax_SelectMove(new EvalBoard(this), getUIDepth(), Integer.MIN_VALUE, Integer.MAX_VALUE, false);
+        //Pair<Integer, Pair<Integer, Pair<Integer, Square>>> r = MinMax_SelectSquare(Bk, false, 0, Bk.getPositionName() + "\r\n", tempFutureMoves);
+        Square sq = getSquareArray()[r.getValue().getValue().x][r.getValue().getValue().y];
 
         if (!takeTurnEx(Bk, sq, false, "", 0)) {
             List<Square> kingsMoves = Bk.getLegalMoves(this);
@@ -574,7 +877,6 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 
         return false;
     }
-
     private boolean takeTurnEx(Piece piece, Square sq, boolean turnSelector, String prevPos, int depthLevel) {
         String newText = "";
         boolean success = false;
@@ -694,11 +996,13 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                             g.buttons.update(g.buttons.getGraphics());
 
                             Stack<String> futureMoves = new Stack<String>();
-                            Pair<Integer, Pair<Piece, Square>> r = MinMax_SelectPiece(false, 0, newText, futureMoves);
-                            Pair<Piece, Square> m = r.getValue();
-                            currPiece = m.getKey();
-                            boolean success = takeTurnEx(m.getKey(), m.getValue(), whiteTurn, newText, 0);
-                            //if (!success) System.out.println("Could not move " + currPiece.getPositionName() + " to " + m.getValue().getPositionName());
+                            Pair<Integer, Pair<Coord, Coord>> r = MinMax_SelectMove(new EvalBoard(this),getUIDepth(),Integer.MIN_VALUE, Integer.MAX_VALUE, false);
+                            Coord pieceC = r.getValue().getKey();
+                            Piece currPiece = getSquareArray()[pieceC.x][pieceC.y].getOccupyingPiece();
+                            Coord squareC = r.getValue().getValue();
+                            Square currSquare = getSquareArray()[squareC.x][squareC.y];
+                            boolean success = takeTurnEx(currPiece, currSquare, whiteTurn, newText, 0);
+                            if (!success) System.out.println("Could not move " + pieceC.x + "," + pieceC.y + " to " + squareC.x + "," + squareC.y);
                             whiteTurn = true; // Change the turn back to White
 
                             //newText = g.moves.getText();
