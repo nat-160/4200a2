@@ -415,9 +415,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 4,9,100:
                         if (!maximizingPlayer) return true;
+                        x = 8;
                         break;
                     case -1,-4,-9,-100:
                         if (maximizingPlayer) return true;
+                        x = 8;
                         break;
                     case 0: break;
                     default: x = 8;
@@ -430,9 +432,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 1,4,9,100:
                         if (!maximizingPlayer) return true;
+                        x = 8;
                         break;
                     case -4,-9,-100:
                         if (maximizingPlayer) return true;
+                        x = 8;
                         break;
                     case 0: break;
                     default: x = 8;
@@ -445,9 +449,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 4,9,100:
                         if (!maximizingPlayer) return true;
+                        x = -1;
                         break;
                     case -1,-4,-9,-100:
                         if (maximizingPlayer) return true;
+                        x = -1;
                         break;
                     case 0: break;
                     default: x = -1;
@@ -460,9 +466,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 1,4,9,100:
                         if (!maximizingPlayer) return true;
+                        x = -1;
                         break;
                     case -4,-9,-100:
                         if (maximizingPlayer) return true;
+                        x = -1;
                         break;
                     case 0: break;
                     default: x = -1;
@@ -475,9 +483,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 6,9,100:
                         if (!maximizingPlayer) return true;
+                        y = 8;
                         break;
                     case -6,-9,-100:
                         if (maximizingPlayer) return true;
+                        y = 8;
                         break;
                     case 0: break;
                     default: y = 8;
@@ -490,9 +500,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 6,9,100:
                         if (!maximizingPlayer) return true;
+                        y = -1;
                         break;
                     case -6,-9,-100:
                         if (maximizingPlayer) return true;
+                        y = -1;
                         break;
                     case 0: break;
                     default: y = -1;
@@ -505,9 +517,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 6,9,100:
                         if (!maximizingPlayer) return true;
+                        x = -1;
                         break;
                     case -6,-9,-100:
                         if (maximizingPlayer) return true;
+                        x = -1;
                         break;
                     case 0: break;
                     default: x = -1;
@@ -520,9 +534,11 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
                 switch (board[x][y]) {
                     case 6,9,100:
                         if (!maximizingPlayer) return true;
+                        x = 8;
                         break;
                     case -6,-9,-100:
                         if (maximizingPlayer) return true;
+                        x = 8;
                         break;
                     case 0: break;
                     default: x = 8;
