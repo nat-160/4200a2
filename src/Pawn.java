@@ -1,88 +1,37 @@
-
-
-import java.util.List;
-import java.util.LinkedList;
-
-public class Pawn extends Piece {
-    private boolean wasMoved;
+import greenfoot.*;
+import java.util.*;
+public class Pawn extends Piece{
+    Pawn(boolean player){
+        super(player,"pawn");
+    }
     
-    public Pawn(int color, Square initSq, String img_file) {
-        super(color, initSq, img_file);
+    Pawn(boolean player, boolean zaidi){
+        super(player,zaidi ? "zaidipawn" : "pawn");
     }
 
-    public void setMoved(boolean moved) {
-        this.wasMoved = moved;
-    }
-
-    @Override
-    public boolean move(Square fin) {
-        boolean b = super.move(fin);
-        wasMoved = true;
-        return b;
-    }
-
-    @Override
-    public List<Square> getLegalMoves(Board b) {
-        LinkedList<Square> legalMoves = new LinkedList<Square>();
-        
-        Square[][] board = b.getSquareArray();
-        
-        int x = this.getPosition().getXNum();
-        int y = this.getPosition().getYNum();
-        int c = this.getColor();
-        
-        if (c == 0) {
-            if (!wasMoved) {
-                if (((y+2) < 8) && (!board[y+2][x].isOccupied())) {
-                    legalMoves.add(board[y+2][x]);
-                }
+    static HashSet<Move> getMoves(Board b, int x, int y){
+        HashSet<Move> output = new HashSet<Move>();
+        if(b.data[x][y]>0){
+            if(b.data[x][y-1]==0){
+                output.add(new Move(x, y, x, y-1));
+                if(y==6 && b.data[x][4]==0)
+                    output.add(new Move(x, y, x, 4));
             }
-            
-            if (y+1 < 8) {
-                if (!board[y+1][x].isOccupied()) {
-                    legalMoves.add(board[y+1][x]);
-                }
+            if(in(x-1) && b.data[x-1][y-1]<0 || y==3 && b.enPassant == x-1)
+                output.add(new Move(x, y, x-1, y-1));
+            if(in(x+1) && b.data[x+1][y-1]<0 || y==3 && b.enPassant == x+1)
+                output.add(new Move(x, y, x+1, y-1));
+        } else {
+            if(b.data[x][y+1]==0){
+                output.add(new Move(x, y, x, y+1));
+                if(y==1 && b.data[x][3]==0)
+                    output.add(new Move(x, y, x, 3));
             }
-            
-            if (x+1 < 8 && y+1 < 8) {
-                if (board[y+1][x+1].isOccupied()) {
-                    legalMoves.add(board[y+1][x+1]);
-                }
-            }
-                
-            if (x-1 >= 0 && y+1 < 8) {
-                if (board[y+1][x-1].isOccupied()) {
-                    legalMoves.add(board[y+1][x-1]);
-                }
-            }
+            if(in(x-1) && b.data[x-1][y+1]>0 || y==4 && b.enPassant == x-1)
+                output.add(new Move(x, y, x-1, y+1));
+            if(in(x+1) && b.data[x+1][y+1]>0 || y==4 && b.enPassant == x+1)
+                output.add(new Move(x, y, x+1, y+1));
         }
-        
-        if (c == 1) {
-            if (!wasMoved) {
-                if (((y-2) >= 0) && (!board[y-2][x].isOccupied())) {
-                    legalMoves.add(board[y-2][x]);
-                }
-            }
-            
-            if (y-1 >= 0) {
-                if (!board[y-1][x].isOccupied()) {
-                    legalMoves.add(board[y-1][x]);
-                }
-            }
-            
-            if (x+1 < 8 && y-1 >= 0) {
-                if (board[y-1][x+1].isOccupied()) {
-                    legalMoves.add(board[y-1][x+1]);
-                }
-            }
-                
-            if (x-1 >= 0 && y-1 >= 0) {
-                if (board[y-1][x-1].isOccupied()) {
-                    legalMoves.add(board[y-1][x-1]);
-                }
-            }
-        }
-        
-        return legalMoves;
+        return output;
     }
 }

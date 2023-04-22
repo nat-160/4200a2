@@ -1,33 +1,27 @@
-
-
-import java.util.LinkedList;
-import java.util.List;
-
-public class Rook extends Piece {
-
-    public Rook(int color, Square initSq, String img_file) {
-        super(color, initSq, img_file);
+import greenfoot.*;
+import java.util.*;
+public class Rook extends Piece{
+    static int[] xDirs = {1, -1, 0, 0};
+    static int[] yDirs = {0, 0, 1, -1};
+    Rook(boolean player){
+        super(player,"rook");
     }
 
-    @Override
-    public List<Square> getLegalMoves(Board b) {
-        LinkedList<Square> legalMoves = new LinkedList<Square>();
-        Square[][] board = b.getSquareArray();
-        
-        int x = this.getPosition().getXNum();
-        int y = this.getPosition().getYNum();
-        
-        int[] occups = getLinearOccupations(board, x, y);
-        
-        for (int i = occups[0]; i <= occups[1]; i++) {
-            if (i != y) legalMoves.add(board[i][x]);
+    static HashSet<Move> getMoves(Board b, int x, int y){
+        HashSet<Move> output = new HashSet<Move>();
+        for(int a=0;a<4;a++){
+            int xSign = xDirs[a];
+            int ySign = yDirs[a];
+            for(int i=1;i<8;i++){
+                if(!in(x+i*xSign) || !in(y+i*ySign))
+                    break;
+                else if(b.data[x][y]*b.data[x+i*xSign][y+i*ySign]>0)
+                    break;
+                output.add(new Move(x, y, x+i*xSign, y+i*ySign));
+                if(b.data[x][y]*b.data[x+i*xSign][y+i*ySign]<0)
+                    break;
+            }
         }
-        
-        for (int i = occups[2]; i <= occups[3]; i++) {
-            if (i != x) legalMoves.add(board[y][i]);
-        }
-        
-        return legalMoves;
+        return output;
     }
-
 }
